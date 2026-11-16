@@ -1,5 +1,6 @@
 // Crawler diario del mercado de ocasión → esquema market.
-// Portales: AutoScout24, Autocasión y coches.net (crawler/<portal>.ts).
+// Portales: AutoScout24, coches.net, Flexicar, OcasionPlus, Coches.com y
+// Autocasión (crawler/<portal>.ts).
 //
 // Distinto de las búsquedas de los usuarios: recorre el mercado de forma
 // sistemática, segmento a segmento (modelo × tramo de precio), para construir
@@ -27,12 +28,25 @@
 import pg from "pg";
 import { autocasion } from "./autocasion.js";
 import { autoscout24 } from "./autoscout24.js";
+import { cochescom } from "./cochescom.js";
 import { cochesnet } from "./cochesnet.js";
+import { flexicar } from "./flexicar.js";
+import { ocasionplus } from "./ocasionplus.js";
 import type { ListingRow } from "./normalize.js";
 import { BlockedError, type PortalAdapter } from "./portal.js";
 import { MODELS, basePriceBands, segmentKey, splitBand, type CrawlModel, type PriceBand } from "./segments.js";
 
-const PORTALS: Record<string, PortalAdapter> = { autoscout24, autocasion, cochesnet };
+const PORTALS: Record<string, PortalAdapter> = { autoscout24, autocasion, cochesnet, flexicar, ocasionplus, cochescom };
+
+// Modelos que se buscan en este portal (sin los que no vende)
+export function modelosDe(portal: PortalAdapter): CrawlModel[] {
+  return MODELS.filter((m) => !m.sinPortales?.includes(portal.id));
+}
+
+// Tramos de precio del portal: los que no filtran por precio, un único tramo
+export function bandsFor(portal: PortalAdapter): PriceBand[] {
+  return portal.singleBand ? [{ lo: 0, hi: null }] : basePriceBands();
+}
 const MAX_MINUTES = Number(process.env.CRAWLER_MAX_MINUTES ?? 420);
 const MAX_CONSECUTIVE_BLOCKS = 3;
 
@@ -215,9 +229,9 @@ async function crawlPortal(db: pg.Client, portal: PortalAdapter, runDate: string
     stats: { segmentos: 0, completos: 0, anuncios: 0, nuevos: 0, errores: 0 },
   };
   const t0 = Date.now();
-  const models = modelSlice(modelOrder(portal, MODELS, runDate), process.env.CRAWLER_MODEL_SLICE).slice(0, maxModels);
+  const models = modelSlice(modelOrder(portal, modelosDe(portal), runDate), process.env.CRAWLER_MODEL_SLICE).slice(0, maxModels);
   for (const model of models) {
-    for (const band of basePriceBands()) await crawlBand(state, model, band);
+    for (const band of bandsFor(portal)) await crawlBand(state, model, band);
     console.log(`[crawler:${portal.id}] ${model.marca} ${model.modelo}: ${state.stats.anuncios} anuncios acumulados`);
     if (state.consecutiveBlocks >= MAX_CONSECUTIVE_BLOCKS) {
       console.error(`[crawler:${portal.id}] Bloqueo del portal: se para el rastreo de hoy en este portal`);
@@ -303,7 +317,7 @@ async function probe(portals: PortalAdapter[]): Promise<void> {
   const maxModels = Number(process.env.CRAWLER_MAX_MODELS ?? MODELS.length);
   let bad = 0;
   for (const portal of portals) {
-    for (const model of modelSlice(MODELS, process.env.CRAWLER_MODEL_SLICE).slice(0, maxModels)) {
+    for (const model of modelSlice(modelosDe(portal), process.env.CRAWLER_MODEL_SLICE).slice(0, maxModels)) {
       const slug = portal.slugFor(model);
       await pauseFor(portal);
       try {

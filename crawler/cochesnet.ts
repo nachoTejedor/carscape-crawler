@@ -7,7 +7,7 @@ import axios from "axios";
 import { isJunkOrDamagedListing } from "../lib/listingQuality.js";
 import { extractAdevintaResults, isAdevintaBotWall } from "../lib/cochesnetPage.js";
 import { MIN_PRICE_EUR, normalizeFuel, toInt, versionDesdeTitulo, type ListingRow } from "./normalize.js";
-import { BlockedError, slugify, type PortalAdapter, type SearchPage } from "./portal.js";
+import { BlockedError, esElModelo, slugify, type PortalAdapter, type SearchPage } from "./portal.js";
 import { provinciaDesdeNombre } from "./provincias.js";
 import type { CrawlModel, PriceBand } from "./segments.js";
 
@@ -34,15 +34,13 @@ export function searchUrl(slug: string, band: PriceBand, page: number): string {
   return `${BASE_URL}/${slug}/segunda-mano/?${qp}`;
 }
 
-const sinTildes = (s: unknown) =>
-  String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizeCochesnetListing(it: any, model: CrawlModel, crawlSegment: string): ListingRow | null {
   const portalId = it?.id !== undefined && it?.id !== null ? String(it.id) : null;
   if (!portalId || !/^\d+$/.test(portalId)) return null;
   // Slug mal resuelto o anuncio colado de otro modelo: fuera
-  if (sinTildes(it.model) !== sinTildes(model.modelo)) return null;
+  if (!esElModelo(it.model, model)) return null;
   const precio = toInt(it.price);
   if (!precio || precio < MIN_PRICE_EUR) return null;
   const titulo = String(it.title ?? "").trim();

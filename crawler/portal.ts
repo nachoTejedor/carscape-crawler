@@ -16,7 +16,7 @@ export interface SearchPage {
 export class BlockedError extends Error {}
 
 export interface PortalAdapter {
-  id: "autoscout24" | "autocasion" | "cochesnet";
+  id: "autoscout24" | "autocasion" | "cochesnet" | "flexicar" | "ocasionplus" | "cochescom";
   pageSize: number;
   maxPages: number;
   maxResultsPerSegment: number;
@@ -27,6 +27,8 @@ export interface PortalAdapter {
   rotateModels: boolean;
   // Tras un bloqueo, esperar esto antes de seguir (0 = seguir sin esperar)
   blockPauseMs: number;
+  // El portal no filtra por precio: cada modelo es un único segmento (0 € - sin tope)
+  singleBand?: boolean;
   slugFor(model: CrawlModel): string;
   searchUrl(slug: string, band: PriceBand, page: number): string;
   fetchSearchPage(slug: string, band: PriceBand, page: number): Promise<SearchPage>;
@@ -40,4 +42,15 @@ export interface PortalAdapter {
 export function slugify(s: string, sep: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
     .replace(/[^a-z0-9.\s-]/g, " ").trim().replace(/\s+/g, sep);
+}
+
+const soloLetrasYNumeros = (s: unknown) =>
+  String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+// ¿El anuncio es de este modelo? Compara sin tildes, mayúsculas ni signos con
+// el nombre del modelo y sus alias ("Clase GLC" para el GLC, "Q4" para el Q4
+// e-tron…). Evita que un slug mal resuelto meta otros modelos de la marca.
+export function esElModelo(nombre: unknown, model: CrawlModel): boolean {
+  const n = soloLetrasYNumeros(nombre);
+  return !!n && [model.modelo, ...(model.alias ?? [])].some((m) => soloLetrasYNumeros(m) === n);
 }

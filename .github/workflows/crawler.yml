@@ -2,7 +2,8 @@
 #
 # Repositorio público: GitHub Actions no tiene límite de minutos, pero cada
 # trabajo dura como mucho 6 h. Por eso el rastreo va en varios trabajos en
-# paralelo (AutoScout24 en dos mitades y coches.net en cuatro) y al final
+# paralelo (AutoScout24 en dos mitades, coches.net en cuatro, Flexicar,
+# OcasionPlus y Coches.com) y al final
 # uno que marca las bajas del día, cuando ya han terminado todos.
 #
 # Secreto necesario: SUPABASE_DB_URL (Settings → Secrets and variables → Actions).
@@ -59,6 +60,9 @@ jobs:
           - { nombre: "coches.net (2/4)", portal: cochesnet, parte: "2/4", minutos: 330 }
           - { nombre: "coches.net (3/4)", portal: cochesnet, parte: "3/4", minutos: 330 }
           - { nombre: "coches.net (4/4)", portal: cochesnet, parte: "4/4", minutos: 330 }
+          - { nombre: "Flexicar", portal: flexicar, parte: "", minutos: 330 }
+          - { nombre: "OcasionPlus", portal: ocasionplus, parte: "", minutos: 330 }
+          - { nombre: "Coches.com", portal: cochescom, parte: "", minutos: 330 }
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
