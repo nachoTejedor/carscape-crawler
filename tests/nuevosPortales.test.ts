@@ -87,7 +87,9 @@ test("Coches.com: lee total y anuncios con su enlace, y normaliza", () => {
   assert.equal(cochescomSlug(LEON), "seat-leon");
   assert.equal(ccUrl("seat-leon", { lo: 8000, hi: 12000 }, 3),
     "https://www.coches.com/coches-segunda-mano/seat-leon.htm?precio_desde=8000&precio_hasta=11999&page=3");
-  const { total, items } = parseCochescomPage(ccPage([ccItem(), ccItem({ id: "otro", visibleId: "SinEnlace1" })], 969));
+  // 1 de 20 sin enlace (5 %): se lee la página y ese anuncio no se guarda
+  const relleno = Array.from({ length: 18 }, (_, i) => ccItem({ id: `r${i}`, visibleId: "BkaXcwakK9sQ" }));
+  const { total, items } = parseCochescomPage(ccPage([ccItem(), ccItem({ id: "otro", visibleId: "SinEnlace1" }), ...relleno], 969));
   assert.equal(total, 969);
   assert.deepEqual(normalizeCochescomListing(items[0], LEON, "seat/leon|500-4000"), {
     portal: "cochescom", portal_id: "be7237f3-c4de-482c-9b89-b155c9cc7d49",
@@ -100,6 +102,20 @@ test("Coches.com: lee total y anuncios con su enlace, y normaliza", () => {
   assert.equal(normalizeCochescomListing(items[1], LEON, "k"), null);
   assert.equal(normalizeCochescomListing({ ...items[0] as object, model: { name: "Ibiza" } }, LEON, "k"), null);
   assert.throws(() => parseCochescomPage("<html>nada</html>"), BlockedError);
+  // Muchos anuncios sin enlace (la página cambió): el tramo no se da por recorrido
+  assert.throws(() => parseCochescomPage(ccPage([ccItem(), ccItem({ id: "a", visibleId: "SinEnlace1" }), ccItem({ id: "b", visibleId: "SinEnlace2" })], 3)), /sin enlace/);
+});
+
+test("un tramo solo cuenta como completo si se vio y se guardó casi todo", async () => {
+  const { motivoIncompleto } = await import("../crawler/run");
+  assert.equal(motivoIncompleto(20, 20, 19), null);
+  assert.equal(motivoIncompleto(19, 20, 19), null);
+  assert.match(motivoIncompleto(17, 20, 17)!, /Solo 17 de 20/);
+  // El lector descarta casi todo (campo o enlaces cambiados): no hay bajas falsas
+  assert.match(motivoIncompleto(20, 20, 1)!, /Solo se guardaron 1 de 20/);
+  assert.equal(motivoIncompleto(20, 20, 10), null);
+  assert.equal(motivoIncompleto(3, 3, 0), null);   // tramos diminutos: no se juzga
+  assert.equal(motivoIncompleto(0, 0, 0), null);
 });
 
 test("modelo y alias: 'Clase GLC' es el GLC; un modelo que el portal no vende no se busca", async () => {
@@ -115,4 +131,14 @@ test("modelo y alias: 'Clase GLC' es el GLC; un modelo que el portal no vende no
   const [cc] = selectPortals(["--portal=cochescom"], undefined);
   assert.ok(!modelosDe(op).some((m) => m.modelo === "Leaf"));
   assert.ok(modelosDe(cc).some((m) => m.modelo === "Leaf"));
+});
+
+test("Coches.com: los Km 0 enlazan a /km0/ y también se leen", () => {
+  const km0 = ccItem({ id: "k1", visibleId: "Lc4ZykU8HuVB", isKm0: true });
+  const html = `<a href="https://www.coches.com/km0/seminuevo-cupra-born-231-e-boost-pack-170kw-59kwh.htm?id=Lc4ZykU8HuVB">x</a>` +
+    `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { classifieds: { total: 1, classifiedList: [km0] } } } })}</script>`;
+  const { items } = parseCochescomPage(html);
+  const row = normalizeCochescomListing(items[0], LEON, "k")!;
+  assert.equal(row.url, "https://www.coches.com/km0/seminuevo-cupra-born-231-e-boost-pack-170kw-59kwh.htm?id=Lc4ZykU8HuVB");
+  assert.equal(row.tipo_oferta, "Km 0");
 });

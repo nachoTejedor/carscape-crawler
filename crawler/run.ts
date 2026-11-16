@@ -43,6 +43,20 @@ export function modelosDe(portal: PortalAdapter): CrawlModel[] {
   return MODELS.filter((m) => !m.sinPortales?.includes(portal.id));
 }
 
+// ¿Puede contar el tramo como completo? Un tramo completo permite marcar bajas
+// (anuncios que ya no salen), así que ante la duda se deja incompleto:
+//  - el portal tiene que haber entregado casi todo lo que dice tener (deja
+//    margen para anuncios que entran o salen durante el recorrido); se cuentan
+//    anuncios distintos: los destacados repetidos en cada página no suman;
+//  - y se tiene que haber guardado al menos la mitad. Si el lector descarta
+//    casi todo (el portal cambió un campo o sus enlaces), los anuncios guardados
+//    antes no se ven hoy y se darían por vendidos sin serlo.
+export function motivoIncompleto(vistos: number, total: number, guardados: number): string | null {
+  if (vistos < total * 0.9) return `Solo ${vistos} de ${total} anuncios`;
+  if (vistos > 5 && guardados < vistos * 0.5) return `Solo se guardaron ${guardados} de ${vistos} anuncios (¿ha cambiado el portal?)`;
+  return null;
+}
+
 // Tramos de precio del portal: los que no filtran por precio, un único tramo
 export function bandsFor(portal: PortalAdapter): PriceBand[] {
   return portal.singleBand ? [{ lo: 0, hi: null }] : basePriceBands();
@@ -204,10 +218,8 @@ async function crawlBand(state: RunState, model: CrawlModel, band: PriceBand): P
         if (row) { await saveListing(state, row); n++; }
       }
     }
-    // Completo solo si el portal entregó casi todo lo que dice tener (deja
-    // margen para anuncios que entran o salen durante el recorrido). Se cuentan
-    // anuncios distintos: los destacados que se repiten en cada página no suman.
-    if (vistos.size < first.numberOfResults * 0.9) throw new Error(`Solo ${vistos.size} de ${first.numberOfResults} anuncios`);
+    const incompleto = motivoIncompleto(vistos.size, first.numberOfResults, n);
+    if (incompleto) throw new Error(incompleto);
     await recordRun(state, key, true, n, null);
   } catch (e) {
     if (e instanceof BlockedError) {

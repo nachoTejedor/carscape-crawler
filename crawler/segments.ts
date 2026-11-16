@@ -18,7 +18,10 @@ export interface CrawlModel {
   opName?: string;   // OcasionPlus: "Marca_Modelo" como lo escribe su web
   ccSlug?: string;   // Coches.com: "marca-modelo" de /coches-segunda-mano/<slug>.htm
   alias?: string[];  // otros nombres del modelo en los portales ("Clase GLC", "Q4"…)
-  sinPortales?: string[];   // portales donde no se busca (no lo venden o no tiene página propia)
+  // Portales donde no se busca (no lo venden o no tiene página propia). Ojo: al
+  // añadir uno, sus anuncios ya guardados de ese portal no se dan de baja solos
+  // (no hay más rastreos de ese segmento); se cierran a mano en la base si hace falta.
+  sinPortales?: string[];
 }
 
 export const MODELS: CrawlModel[] = [

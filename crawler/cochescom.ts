@@ -43,9 +43,16 @@ export function parseCochescomPage(html: string): { total: number; items: unknow
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (classifieds.classifiedList as any[]).map((it) => {
     const vid = typeof it?.visibleId === "string" && /^[A-Za-z0-9_-]+$/.test(it.visibleId) ? it.visibleId : null;
-    const href = vid ? html.match(new RegExp(`href="(${BASE_URL}/coches-segunda-mano/[^"?]+\\.htm\\?id=${vid})"`))?.[1] : null;
+    // Ocasión en /coches-segunda-mano/…, km 0 en /km0/… (cualquier sección de coches.com)
+    const href = vid ? html.match(new RegExp(`href="(https://www\\.coches\\.com/[a-z0-9-]+/[^"?/]+\\.htm\\?id=${vid})"`))?.[1] : null;
     return { ...it, _url: href ?? null };
   });
+  // Sin enlace el anuncio no se guarda: si faltan muchos, la página cambió y
+  // el tramo no debe contar como recorrido (se darían bajas falsas)
+  const sinEnlace = items.filter((it) => !it._url).length;
+  if (items.length > 0 && sinEnlace > items.length * 0.1) {
+    throw new Error(`${sinEnlace} de ${items.length} anuncios sin enlace en la página (¿ha cambiado Coches.com?)`);
+  }
   return { total, items };
 }
 
