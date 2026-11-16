@@ -10,7 +10,7 @@ de CarScapeAI.
 | AutoScout24 | `crawler/autoscout24.ts` | Funciona desde servidores |
 | Autocasión | `crawler/autocasion.ts` | **No se rastrea en GitHub Actions**: responde 403 a sus IPs. El lector está listo por si cambia |
 | Flexicar | `crawler/flexicar.ts` | API JSON de su web. Concesionario: sus coches suelen estar también en otros portales |
-| OcasionPlus | `crawler/ocasionplus.ts` | API JSON de su web, sin filtro de precio: un segmento por modelo. Concesionario |
+| OcasionPlus | `crawler/ocasionplus.ts` | **No se rastrea en GitHub Actions**: su API responde 405 a sus IPs. El lector está listo (probado desde una IP doméstica) |
 | Coches.com | `crawler/cochescom.ts` | `__NEXT_DATA__` de la búsqueda, con filtro de precio |
 | coches.net | `crawler/cochesnet.ts` | Desde GitHub Actions sí deja leer (probado). Va despacio, 20-40 s por página: no da tiempo a todo en un día, así que cada día empieza por un modelo distinto |
 
@@ -25,8 +25,8 @@ portal bloqueado nunca da coches por vendidos.
 **GitHub Actions**, gratis por ser un repositorio público
 (`.github/workflows/crawler.yml`):
 
-- Todos los días a las 01:17 UTC. Corren a la vez nueve trabajos (AutoScout24
-  en dos mitades, coches.net en cuatro, Flexicar, OcasionPlus y Coches.com), cada uno de menos de 6 horas, el
+- Todos los días a las 01:17 UTC. Corren a la vez ocho trabajos (AutoScout24
+  en dos mitades, coches.net en cuatro, Flexicar y Coches.com), cada uno de menos de 6 horas, el
   límite de GitHub. Al final, uno marca las bajas del día.
 - **Secreto necesario:** `SUPABASE_DB_URL`, la cadena del *Session pooler* de
   Supabase (usuario `postgres`). Se pone en *Settings → Secrets and variables →

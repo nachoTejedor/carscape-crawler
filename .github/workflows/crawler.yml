@@ -2,8 +2,8 @@
 #
 # Repositorio público: GitHub Actions no tiene límite de minutos, pero cada
 # trabajo dura como mucho 6 h. Por eso el rastreo va en varios trabajos en
-# paralelo (AutoScout24 en dos mitades, coches.net en cuatro, Flexicar,
-# OcasionPlus y Coches.com) y al final
+# paralelo (AutoScout24 en dos mitades, coches.net en cuatro, Flexicar y
+# Coches.com) y al final
 # uno que marca las bajas del día, cuando ya han terminado todos.
 #
 # Secreto necesario: SUPABASE_DB_URL (Settings → Secrets and variables → Actions).
@@ -46,8 +46,9 @@ jobs:
     timeout-minutes: 355
     # coches.net puede bloquear algún día: que falle no marca el día en rojo
     continue-on-error: ${{ matrix.portal == 'cochesnet' }}
-    # Autocasión no está: responde 403 a las IPs de GitHub Actions (probado
-    # el 16-11-2026). Su lector sigue en crawler/autocasion.ts por si cambia.
+    # Autocasión y OcasionPlus no están: responden 403 / 405 a las IPs de
+    # GitHub Actions (probado el 16-11-2026). Sus lectores siguen en crawler/
+    # por si cambia.
     # coches.net va despacio (20-40 s por página) y en 4 partes; lo que no da
     # tiempo un día se recorre otro (cada día empieza por un modelo distinto).
     strategy:
@@ -61,7 +62,6 @@ jobs:
           - { nombre: "coches.net (3/4)", portal: cochesnet, parte: "3/4", minutos: 330 }
           - { nombre: "coches.net (4/4)", portal: cochesnet, parte: "4/4", minutos: 330 }
           - { nombre: "Flexicar", portal: flexicar, parte: "", minutos: 330 }
-          - { nombre: "OcasionPlus", portal: ocasionplus, parte: "", minutos: 330 }
           - { nombre: "Coches.com", portal: cochescom, parte: "", minutos: 330 }
     steps:
       - uses: actions/checkout@v4
