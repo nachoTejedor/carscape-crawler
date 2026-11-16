@@ -277,7 +277,7 @@ async function probe(portals: PortalAdapter[]): Promise<void> {
   const maxModels = Number(process.env.CRAWLER_MAX_MODELS ?? MODELS.length);
   let bad = 0;
   for (const portal of portals) {
-    for (const model of MODELS.slice(0, maxModels)) {
+    for (const model of modelSlice(MODELS, process.env.CRAWLER_MODEL_SLICE).slice(0, maxModels)) {
       const slug = portal.slugFor(model);
       await pauseFor(portal);
       try {

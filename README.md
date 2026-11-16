@@ -8,8 +8,8 @@ de CarScapeAI.
 | Portal | Archivo | Notas |
 |---|---|---|
 | AutoScout24 | `crawler/autoscout24.ts` | Funciona desde servidores |
-| Autocasión | `crawler/autocasion.ts` | Funciona desde servidores |
-| coches.net | `crawler/cochesnet.ts` | Su anti-bot bloquea las IPs de servidores: saca lo que deja (a menudo nada) |
+| Autocasión | `crawler/autocasion.ts` | **No se rastrea en GitHub Actions**: responde 403 a sus IPs. El lector está listo por si cambia |
+| coches.net | `crawler/cochesnet.ts` | Desde GitHub Actions sí deja leer (probado). Va despacio, 20-40 s por página: no da tiempo a todo en un día, así que cada día empieza por un modelo distinto |
 
 Recorre 59 modelos (`crawler/segments.ts`) por tramos de precio. Si un tramo
 tiene demasiados anuncios, lo parte en dos. Solo marca un anuncio como
@@ -21,8 +21,8 @@ portal bloqueado nunca da coches por vendidos.
 **GitHub Actions**, gratis por ser un repositorio público
 (`.github/workflows/crawler.yml`):
 
-- Todos los días a las 01:17 UTC. Corren a la vez cuatro trabajos (AutoScout24
-  en dos mitades, Autocasión y coches.net), cada uno de menos de 6 horas, el
+- Todos los días a las 01:17 UTC. Corren a la vez seis trabajos (AutoScout24
+  en dos mitades y coches.net en cuatro), cada uno de menos de 6 horas, el
   límite de GitHub. Al final, uno marca las bajas del día.
 - **Secreto necesario:** `SUPABASE_DB_URL`, la cadena del *Session pooler* de
   Supabase (usuario `postgres`). Se pone en *Settings → Secrets and variables →

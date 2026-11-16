@@ -2,7 +2,7 @@
 #
 # Repositorio público: GitHub Actions no tiene límite de minutos, pero cada
 # trabajo dura como mucho 6 h. Por eso el rastreo va en varios trabajos en
-# paralelo (AutoScout24 en dos mitades, Autocasión y coches.net) y al final
+# paralelo (AutoScout24 en dos mitades y coches.net en cuatro) y al final
 # uno que marca las bajas del día, cuando ya han terminado todos.
 #
 # Secreto necesario: SUPABASE_DB_URL (Settings → Secrets and variables → Actions).
@@ -43,16 +43,22 @@ jobs:
     needs: fecha
     runs-on: ubuntu-latest
     timeout-minutes: 355
-    # coches.net bloquea las IPs de servidores: que falle no marca el día en rojo
+    # coches.net puede bloquear algún día: que falle no marca el día en rojo
     continue-on-error: ${{ matrix.portal == 'cochesnet' }}
+    # Autocasión no está: responde 403 a las IPs de GitHub Actions (probado
+    # el 16-11-2026). Su lector sigue en crawler/autocasion.ts por si cambia.
+    # coches.net va despacio (20-40 s por página) y en 4 partes; lo que no da
+    # tiempo un día se recorre otro (cada día empieza por un modelo distinto).
     strategy:
       fail-fast: false
       matrix:
         include:
           - { nombre: "AutoScout24 (1/2)", portal: autoscout24, parte: "1/2", minutos: 330 }
           - { nombre: "AutoScout24 (2/2)", portal: autoscout24, parte: "2/2", minutos: 330 }
-          - { nombre: "Autocasión", portal: autocasion, parte: "", minutos: 330 }
-          - { nombre: "coches.net", portal: cochesnet, parte: "", minutos: 150 }
+          - { nombre: "coches.net (1/4)", portal: cochesnet, parte: "1/4", minutos: 330 }
+          - { nombre: "coches.net (2/4)", portal: cochesnet, parte: "2/4", minutos: 330 }
+          - { nombre: "coches.net (3/4)", portal: cochesnet, parte: "3/4", minutos: 330 }
+          - { nombre: "coches.net (4/4)", portal: cochesnet, parte: "4/4", minutos: 330 }
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
