@@ -114,7 +114,9 @@ test("un tramo solo cuenta como completo si se vio y se guardó casi todo", asyn
   // El lector descarta casi todo (campo o enlaces cambiados): no hay bajas falsas
   assert.match(motivoIncompleto(20, 20, 1)!, /Solo se guardaron 1 de 20/);
   assert.equal(motivoIncompleto(20, 20, 10), null);
-  assert.equal(motivoIncompleto(3, 3, 0), null);   // tramos diminutos: no se juzga
+  // Tramos pequeños: con algo guardado vale; sin nada guardado, nunca completo
+  assert.equal(motivoIncompleto(3, 3, 1), null);
+  assert.match(motivoIncompleto(3, 3, 0)!, /ninguno de 3/);
   assert.equal(motivoIncompleto(0, 0, 0), null);
 });
 

@@ -53,6 +53,7 @@ export function modelosDe(portal: PortalAdapter): CrawlModel[] {
 //    antes no se ven hoy y se darían por vendidos sin serlo.
 export function motivoIncompleto(vistos: number, total: number, guardados: number): string | null {
   if (vistos < total * 0.9) return `Solo ${vistos} de ${total} anuncios`;
+  if (vistos > 0 && guardados === 0) return `No se guardó ninguno de ${vistos} anuncios (¿ha cambiado el portal?)`;
   if (vistos > 5 && guardados < vistos * 0.5) return `Solo se guardaron ${guardados} de ${vistos} anuncios (¿ha cambiado el portal?)`;
   return null;
 }
@@ -201,7 +202,8 @@ async function crawlBand(state: RunState, model: CrawlModel, band: PriceBand): P
       return;
     }
     let listings = first.listings;
-    const vistos = new Set<string>();   // anuncios distintos que entregó el portal (antes de filtros)
+    const vistos = new Set<string>();     // anuncios distintos que entregó el portal (antes de filtros)
+    const guardados = new Set<string>();  // anuncios distintos que pasaron el lector (los destacados repetidos no suman)
     for (let page = 1; page <= pages; page++) {
       if (page > 1) {
         // A mitad de tramo también se para a tiempo: el trabajo de GitHub se
@@ -215,10 +217,10 @@ async function crawlBand(state: RunState, model: CrawlModel, band: PriceBand): P
         const id = portal.listingId(it);
         if (id) vistos.add(id);
         const row = portal.normalize(it, model, key);
-        if (row) { await saveListing(state, row); n++; }
+        if (row) { await saveListing(state, row); n++; guardados.add(row.portal_id); }
       }
     }
-    const incompleto = motivoIncompleto(vistos.size, first.numberOfResults, n);
+    const incompleto = motivoIncompleto(vistos.size, first.numberOfResults, guardados.size);
     if (incompleto) throw new Error(incompleto);
     await recordRun(state, key, true, n, null);
   } catch (e) {
