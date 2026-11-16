@@ -1,0 +1,23 @@
+# Sondeo manual de portales candidatos (scripts/sondeo.ts): una petición por
+# portal desde las IPs de GitHub Actions, sin base de datos ni secretos.
+name: Sondeo de portales
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sondeo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prod
+      - run: pnpm sondeo
