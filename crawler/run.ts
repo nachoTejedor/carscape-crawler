@@ -139,10 +139,16 @@ async function recordRun(state: RunState, key: string, completo: boolean, n: num
 
 // Recorre un tramo. Si tiene demasiados anuncios lo parte en dos y recurre.
 async function crawlBand(state: RunState, model: CrawlModel, band: PriceBand): Promise<void> {
-  if (Date.now() > state.deadline || state.consecutiveBlocks >= MAX_CONSECUTIVE_BLOCKS) return;
   const { portal } = state;
   const slug = portal.slugFor(model);
   const key = segmentKey(model, band);
+  // Sin tiempo o con el portal bloqueado, el tramo queda apuntado como NO
+  // recorrido: así marcar_bajas no da por vendidos anuncios de este modelo que
+  // pudieron pasar a este tramo (p. ej. tras una bajada de precio).
+  if (Date.now() > state.deadline || state.consecutiveBlocks >= MAX_CONSECUTIVE_BLOCKS) {
+    await recordRun(state, key, false, 0, Date.now() > state.deadline ? "No recorrido: tiempo agotado" : "No recorrido: portal bloqueado");
+    return;
+  }
   let n = 0;
   try {
     await pauseFor(portal);
@@ -170,6 +176,9 @@ async function crawlBand(state: RunState, model: CrawlModel, band: PriceBand): P
     const vistos = new Set<string>();   // anuncios distintos que entregó el portal (antes de filtros)
     for (let page = 1; page <= pages; page++) {
       if (page > 1) {
+        // A mitad de tramo también se para a tiempo: el trabajo de GitHub se
+        // corta a los 355 min y un tramo a medias no debe quedar sin apuntar
+        if (Date.now() > state.deadline) throw new Error(`Tiempo agotado en la página ${page}/${pages}`);
         await pauseFor(portal);
         listings = (await portal.fetchSearchPage(slug, band, page)).listings;
       }
@@ -231,8 +240,25 @@ async function connect(): Promise<pg.Client> {
   if (!dsn) throw new Error("Falta SUPABASE_DB_URL (conexión directa a Postgres de Supabase)");
   const ca = process.env.SUPABASE_DB_CA_CERT;
   if (!ca) console.warn("[crawler] Sin SUPABASE_DB_CA_CERT: la conexión va cifrada pero sin verificar el certificado del servidor");
-  const db = new pg.Client({ connectionString: dsn, ssl: ca ? { ca } : { rejectUnauthorized: false } });
-  await db.connect();
+  // Los registros de GitHub Actions son públicos y GitHub solo tapa el secreto
+  // entero: un error de conexión ("getaddrinfo ENOTFOUND <servidor>") enseñaría
+  // el servidor de la base. Se muestra solo el tipo de error.
+  const sinDetalles = (e: unknown) => {
+    const code = (e as { code?: unknown })?.code;
+    return new Error(`No se pudo conectar a la base de datos${typeof code === "string" && /^[A-Z0-9_]+$/.test(code) ? ` (${code})` : ""}`);
+  };
+  let db: pg.Client;
+  try {
+    db = new pg.Client({ connectionString: dsn, ssl: ca ? { ca } : { rejectUnauthorized: false } });
+    await db.connect();
+  } catch (e) {
+    throw sinDetalles(e);
+  }
+  // Si la conexión se cae a mitad, el error tampoco debe llevar el servidor
+  db.on("error", (e) => {
+    console.error(`[crawler] ${sinDetalles(e).message}: conexión perdida`);
+    process.exit(1);
+  });
   return db;
 }
 
